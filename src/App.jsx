@@ -504,8 +504,8 @@ function ManualSubDialog({ sub, onField, onBench, getPlayerName, onExecute, onDi
 // --- Setup Screen ---
 function SetupScreen({ onStart }) {
   const [teamName, setTeamName] = useState("");
-  const [matchDuration, setMatchDuration] = useState(40);
-  const [playersOnField, setPlayersOnField] = useState(7);
+  const [matchDuration, setMatchDuration] = useState("40");
+  const [playersOnField, setPlayersOnField] = useState("7");
   const [subMode, setSubMode] = useState(1);
   const [subInterval, setSubInterval] = useState(2.5);
   const [players, setPlayers] = useState([]);
@@ -527,9 +527,11 @@ function SetupScreen({ onStart }) {
     if (keeperId === id) setKeeperId(null);
   };
 
-  const canStart = players.length >= playersOnField && keeperId !== null && matchDuration > 0;
-  const outfieldOnField = playersOnField - 1;
-  const benchCount = players.length - playersOnField;
+  const matchDurationNum = parseInt(matchDuration) || 0;
+  const playersOnFieldNum = parseInt(playersOnField) || 0;
+  const canStart = players.length >= playersOnFieldNum && playersOnFieldNum >= 2 && keeperId !== null && matchDurationNum > 0;
+  const outfieldOnField = playersOnFieldNum - 1;
+  const benchCount = players.length - playersOnFieldNum;
 
   return (
     <div style={{ maxWidth: 520, margin: "0 auto", padding: "20px 16px" }}>
@@ -555,11 +557,11 @@ function SetupScreen({ onStart }) {
         <div style={{ display: "flex", gap: 16 }}>
           <div style={{ flex: 1 }}>
             <label style={labelStyle}>Kamplengde (min)</label>
-            <input type="number" value={matchDuration} onChange={(e) => setMatchDuration(Math.max(1, parseInt(e.target.value) || 0))} style={inputStyle} min={1} />
+            <input type="number" value={matchDuration} onChange={(e) => setMatchDuration(e.target.value)} style={inputStyle} min={1} />
           </div>
           <div style={{ flex: 1 }}>
             <label style={labelStyle}>Spillere på banen (inkl. keeper)</label>
-            <input type="number" value={playersOnField} onChange={(e) => setPlayersOnField(Math.max(2, parseInt(e.target.value) || 0))} style={inputStyle} min={2} />
+            <input type="number" value={playersOnField} onChange={(e) => setPlayersOnField(e.target.value)} style={inputStyle} min={2} />
           </div>
         </div>
       </Card>
@@ -632,14 +634,17 @@ function SetupScreen({ onStart }) {
         )}
       </Card>
 
-      <Button onClick={() => onStart({ teamName: teamName || "Mitt lag", matchDuration, playersOnField, subMode, subInterval, players, keeperId })} variant="primary" size="lg" disabled={!canStart} style={{ width: "100%", marginTop: 8 }}>
+      <Button onClick={() => onStart({ teamName: teamName || "Mitt lag", matchDuration: matchDurationNum, playersOnField: playersOnFieldNum, subMode, subInterval, players, keeperId })} variant="primary" size="lg" disabled={!canStart} style={{ width: "100%", marginTop: 8 }}>
         🏟️ START KAMP
       </Button>
       {!canStart && players.length > 0 && (
         <p style={{ textAlign: "center", color: COLORS.textMuted, fontSize: 12, marginTop: 8, fontFamily: "'DM Sans', sans-serif" }}>
-          {!keeperId ? "Velg en keeper" : `Trenger minst ${playersOnField} spillere (har ${players.length})`}
+          {!keeperId ? "Velg en keeper" : matchDurationNum < 1 ? "Legg inn kamplengde" : playersOnFieldNum < 2 ? "Legg inn antall spillere" : `Trenger minst ${playersOnFieldNum} spillere (har ${players.length})`}
         </p>
       )}
+      <p style={{ textAlign: "center", color: COLORS.textDim, fontSize: 12, marginTop: 32, paddingBottom: 16, fontFamily: "'DM Sans', sans-serif" }}>
+        Tilbakemeldinger: vegar.strand@gmail.com
+      </p>
     </div>
   );
 }
@@ -1241,6 +1246,10 @@ function MatchScreen({ config, onEnd, onBack }) {
           </div>
         </Card>
       )}
+
+      <p style={{ textAlign: "center", color: COLORS.textDim, fontSize: 12, marginTop: 24, paddingBottom: 16, fontFamily: "'DM Sans', sans-serif" }}>
+        Tilbakemeldinger: vegar.strand@gmail.com
+      </p>
     </div>
   );
 }
