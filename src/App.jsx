@@ -693,35 +693,48 @@ function MatchScreen({ config, onEnd, onBack }) {
     setPlayTimes(times);
   }, []);
 
+  // Combined timer: match clock + play times in one interval, with background recovery
   useEffect(() => {
     if (isRunning) {
       lastTickRef.current = Date.now();
-      intervalRef.current = setInterval(() => {
+
+      const tick = () => {
         const now = Date.now();
-        const delta = Math.round((now - lastTickRef.current) / 1000);
+        const delta = Math.round((now - (lastTickRef.current || now)) / 1000);
         lastTickRef.current = now;
+        if (delta <= 0) return;
+
         setElapsedSec((prev) => {
           const next = prev + delta;
           if (next >= matchDurationSec) { setIsRunning(false); setMatchEnded(true); return matchDurationSec; }
           return next;
         });
-      }, 1000);
+
+        setPlayTimes((prev) => {
+          const next = { ...prev };
+          onField.forEach((id) => { next[id] = (next[id] || 0) + delta; });
+          if (keeper) next[keeper] = (next[keeper] || 0) + delta;
+          return next;
+        });
+      };
+
+      intervalRef.current = setInterval(tick, 1000);
+
+      // Recover from iOS Safari background suspension
+      const handleVisibility = () => {
+        if (document.visibilityState === 'visible') {
+          tick();
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibility);
+
+      return () => {
+        clearInterval(intervalRef.current);
+        document.removeEventListener('visibilitychange', handleVisibility);
+      };
     }
     return () => clearInterval(intervalRef.current);
-  }, [isRunning, matchDurationSec]);
-
-  useEffect(() => {
-    if (!isRunning) return;
-    const timer = setInterval(() => {
-      setPlayTimes((prev) => {
-        const next = { ...prev };
-        onField.forEach((id) => { next[id] = (next[id] || 0) + 1; });
-        if (keeper) next[keeper] = (next[keeper] || 0) + 1;
-        return next;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [isRunning, onField, keeper]);
+  }, [isRunning, matchDurationSec, onField, keeper]);
 
   useEffect(() => {
     for (const sub of schedule) {
