@@ -504,8 +504,8 @@ function ManualSubDialog({ sub, onField, onBench, getPlayerName, onExecute, onDi
 // --- Setup Screen ---
 function SetupScreen({ onStart }) {
   const [teamName, setTeamName] = useState("");
-  const [matchDuration, setMatchDuration] = useState("40");
-  const [playersOnField, setPlayersOnField] = useState("7");
+  const [matchDuration, setMatchDuration] = useState("50");
+  const [playersOnField, setPlayersOnField] = useState("5");
   const [subMode, setSubMode] = useState(1);
   const [subInterval, setSubInterval] = useState(2.5);
   const [players, setPlayers] = useState([]);
