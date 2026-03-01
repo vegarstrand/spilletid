@@ -1287,7 +1287,9 @@ export default function App() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: ${COLORS.bg}; }
+        html, body { overscroll-behavior: none; }
+        body { background: ${COLORS.bg}; position: fixed; width: 100%; height: 100%; overflow: hidden; }
+        #root { height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         input::placeholder { color: ${COLORS.textDim}; }
         input:focus { border-color: ${COLORS.green} !important; }
         ::-webkit-scrollbar { width: 6px; }
