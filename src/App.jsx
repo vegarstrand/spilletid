@@ -511,6 +511,7 @@ function SetupScreen({ onStart }) {
   const [players, setPlayers] = useState([]);
   const [newName, setNewName] = useState("");
   const [keeperId, setKeeperId] = useState(null);
+  const [hasKeeper, setHasKeeper] = useState(true);
   const inputRef = useRef(null);
 
   const addPlayer = () => {
@@ -529,8 +530,8 @@ function SetupScreen({ onStart }) {
 
   const matchDurationNum = parseInt(matchDuration) || 0;
   const playersOnFieldNum = parseInt(playersOnField) || 0;
-  const canStart = players.length >= playersOnFieldNum && playersOnFieldNum >= 2 && keeperId !== null && matchDurationNum > 0;
-  const outfieldOnField = playersOnFieldNum - 1;
+  const canStart = players.length >= playersOnFieldNum && playersOnFieldNum >= 2 && matchDurationNum > 0 && (hasKeeper ? keeperId !== null : true);
+  const outfieldOnField = hasKeeper ? playersOnFieldNum - 1 : playersOnFieldNum;
   const benchCount = players.length - playersOnFieldNum;
 
   return (
@@ -560,9 +561,33 @@ function SetupScreen({ onStart }) {
             <input type="number" value={matchDuration} onChange={(e) => setMatchDuration(e.target.value)} style={inputStyle} min={1} />
           </div>
           <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Spillere på banen (inkl. keeper)</label>
+            <label style={labelStyle}>Antall spillere på banen per lag</label>
             <input type="number" value={playersOnField} onChange={(e) => setPlayersOnField(e.target.value)} style={inputStyle} min={2} />
           </div>
+        </div>
+      </Card>
+
+      {/* Keeper toggle */}
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+        }}>
+          <label style={{ ...labelStyle, marginBottom: 0 }}>Laget har keeper</label>
+          <button
+            onClick={() => { setHasKeeper(!hasKeeper); if (hasKeeper) setKeeperId(null); }}
+            style={{
+              width: 52, height: 30, borderRadius: 15, border: "none", cursor: "pointer",
+              background: hasKeeper ? COLORS.green : COLORS.border,
+              position: "relative", transition: "background 0.2s",
+            }}
+          >
+            <div style={{
+              width: 24, height: 24, borderRadius: 12, background: "#fff",
+              position: "absolute", top: 3,
+              left: hasKeeper ? 25 : 3,
+              transition: "left 0.2s",
+            }} />
+          </button>
         </div>
       </Card>
 
@@ -606,7 +631,7 @@ function SetupScreen({ onStart }) {
           <input ref={inputRef} value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addPlayer()} placeholder="Skriv spillernavn..." style={{ ...inputStyle, flex: 1, marginBottom: 0 }} />
           <Button onClick={addPlayer} variant="primary" size="md">+</Button>
         </div>
-        {players.length > 0 && (
+        {players.length > 0 && hasKeeper && (
           <div style={{ marginBottom: 12 }}>
             <p style={{ color: COLORS.textMuted, fontSize: 12, marginBottom: 8, fontFamily: "'DM Sans', sans-serif" }}>
               Trykk på en spiller for å velge keeper:
@@ -618,28 +643,45 @@ function SetupScreen({ onStart }) {
             </div>
           </div>
         )}
+        {players.length > 0 && !hasKeeper && (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {players.map((p) => (
+                <PlayerChip key={p.id} name={p.name} variant="field" onRemove={() => removePlayer(p.id)} />
+              ))}
+            </div>
+          </div>
+        )}
         {players.length > 0 && (
           <div style={{ padding: "10px 14px", borderRadius: 8, background: COLORS.bg, fontSize: 13, color: COLORS.textMuted, fontFamily: "'DM Sans', sans-serif" }}>
-            {keeperId ? (
+            {hasKeeper ? (
+              keeperId ? (
+                <>
+                  🧤 Keeper: <strong style={{ color: COLORS.blue }}>{players.find(p => p.id === keeperId)?.name}</strong>
+                  {" · "}{outfieldOnField} utespillere på banen
+                  {benchCount > 0 ? ` · ${benchCount} på benken` : ""}
+                  {benchCount < 0 && <span style={{ color: COLORS.red }}> · Trenger {Math.abs(benchCount)} spiller(e) til!</span>}
+                </>
+              ) : (
+                <span style={{ color: COLORS.orange }}>⚠ Velg en keeper ved å trykke på en spiller</span>
+              )
+            ) : (
               <>
-                🧤 Keeper: <strong style={{ color: COLORS.blue }}>{players.find(p => p.id === keeperId)?.name}</strong>
-                {" · "}{outfieldOnField} utespillere på banen
+                {outfieldOnField} spillere på banen
                 {benchCount > 0 ? ` · ${benchCount} på benken` : ""}
                 {benchCount < 0 && <span style={{ color: COLORS.red }}> · Trenger {Math.abs(benchCount)} spiller(e) til!</span>}
               </>
-            ) : (
-              <span style={{ color: COLORS.orange }}>⚠ Velg en keeper ved å trykke på en spiller</span>
             )}
           </div>
         )}
       </Card>
 
-      <Button onClick={() => onStart({ teamName: teamName || "Mitt lag", matchDuration: matchDurationNum, playersOnField: playersOnFieldNum, subMode, subInterval, players, keeperId })} variant="primary" size="lg" disabled={!canStart} style={{ width: "100%", marginTop: 8 }}>
+      <Button onClick={() => onStart({ teamName: teamName || "Mitt lag", matchDuration: matchDurationNum, playersOnField: playersOnFieldNum, subMode, subInterval, players, keeperId: hasKeeper ? keeperId : null, hasKeeper })} variant="primary" size="lg" disabled={!canStart} style={{ width: "100%", marginTop: 8 }}>
         🏟️ START KAMP
       </Button>
       {!canStart && players.length > 0 && (
         <p style={{ textAlign: "center", color: COLORS.textMuted, fontSize: 12, marginTop: 8, fontFamily: "'DM Sans', sans-serif" }}>
-          {!keeperId ? "Velg en keeper" : matchDurationNum < 1 ? "Legg inn kamplengde" : playersOnFieldNum < 2 ? "Legg inn antall spillere" : `Trenger minst ${playersOnFieldNum} spillere (har ${players.length})`}
+          {hasKeeper && !keeperId ? "Velg en keeper" : matchDurationNum < 1 ? "Legg inn kamplengde" : playersOnFieldNum < 2 ? "Legg inn antall spillere" : `Trenger minst ${playersOnFieldNum} spillere (har ${players.length})`}
         </p>
       )}
       <p style={{ textAlign: "center", color: COLORS.textDim, fontSize: 12, marginTop: 32, paddingBottom: 16, fontFamily: "'DM Sans', sans-serif" }}>
@@ -651,13 +693,13 @@ function SetupScreen({ onStart }) {
 
 // --- Match Screen ---
 function MatchScreen({ config, onEnd, onBack }) {
-  const { teamName, matchDuration, playersOnField, subMode, subInterval, players: initialPlayers, keeperId } = config;
+  const { teamName, matchDuration, playersOnField, subMode, subInterval, players: initialPlayers, keeperId, hasKeeper } = config;
   const matchDurationSec = matchDuration * 60;
 
   const [elapsedSec, setElapsedSec] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [players, setPlayers] = useState(initialPlayers);
-  const [keeper, setKeeper] = useState(keeperId);
+  const [keeper, setKeeper] = useState(hasKeeper ? keeperId : null);
   const [onField, setOnField] = useState([]);
   const [onBench, setOnBench] = useState([]);
   const [schedule, setSchedule] = useState([]);
@@ -681,9 +723,10 @@ function MatchScreen({ config, onEnd, onBack }) {
   const lastTickRef = useRef(null);
   const alertedRef = useRef(new Set());
 
+  const fieldSpots = hasKeeper ? playersOnField - 1 : playersOnField;
+
   useEffect(() => {
-    const outfield = initialPlayers.filter((p) => p.id !== keeperId);
-    const fieldSpots = playersOnField - 1;
+    const outfield = hasKeeper ? initialPlayers.filter((p) => p.id !== keeperId) : initialPlayers;
     const result = calculateSchedule(matchDuration, outfield, fieldSpots, subMode, null, 0, subInterval);
     setOnField(result.initialField);
     setOnBench(result.initialBench);
@@ -769,7 +812,6 @@ function MatchScreen({ config, onEnd, onBack }) {
     });
 
     // Balance to guarantee correct field count
-    const fieldSpots = playersOnField - 1;
     const balanced = balanceFieldBench(newField, newBench, fieldSpots, playTimes);
     newField = balanced.field;
     newBench = balanced.bench;
@@ -780,7 +822,7 @@ function MatchScreen({ config, onEnd, onBack }) {
     setAlertSub(null);
 
     // Dynamically recalculate remaining schedule based on actual state
-    const outfield = players.filter((p) => p.id !== keeper);
+    const outfield = keeper ? players.filter((p) => p.id !== keeper) : [...players];
     const elapsedMin = elapsedSec / 60;
     const ptMinutes = {};
     outfield.forEach((p) => { ptMinutes[p.id] = (playTimes[p.id] || 0) / 60; });
@@ -800,8 +842,7 @@ function MatchScreen({ config, onEnd, onBack }) {
   };
 
   const recalcSchedule = useCallback((currentPlayers, currentKeeper, currentOnField, currentOnBench, currentPlayTimes, currentRecentlyOut = new Set()) => {
-    const outfield = currentPlayers.filter((p) => p.id !== currentKeeper);
-    const fieldSpots = playersOnField - 1;
+    const outfield = currentKeeper ? currentPlayers.filter((p) => p.id !== currentKeeper) : [...currentPlayers];
     const elapsedMin = elapsedSec / 60;
     const ptMinutes = {};
     outfield.forEach((p) => { ptMinutes[p.id] = (currentPlayTimes[p.id] || 0) / 60; });
@@ -832,7 +873,6 @@ function MatchScreen({ config, onEnd, onBack }) {
     setPlayTimes(newPlayTimes);
 
     // Balance to maintain correct field count
-    const fieldSpots = playersOnField - 1;
     const balanced = balanceFieldBench(rawField, rawBench, fieldSpots, newPlayTimes);
 
     setTimeout(() => { recalcSchedule(newPlayers, keeper, balanced.field, balanced.bench, newPlayTimes, recentlySwappedOut); }, 50);
@@ -850,7 +890,6 @@ function MatchScreen({ config, onEnd, onBack }) {
     setShowAddPlayer(false);
 
     // New player goes to bench, then balance
-    const fieldSpots = playersOnField - 1;
     const balanced = balanceFieldBench(onField, [...onBench, id], fieldSpots, newPlayTimes);
 
     setTimeout(() => { recalcSchedule(newPlayers, keeper, balanced.field, balanced.bench, newPlayTimes, recentlySwappedOut); }, 50);
@@ -868,7 +907,6 @@ function MatchScreen({ config, onEnd, onBack }) {
     else newOnField.push(oldKeeper);
 
     // Balance to correct field count
-    const fieldSpots = playersOnField - 1;
     const balanced = balanceFieldBench(newOnField, newOnBench, fieldSpots, playTimes);
 
     setKeeper(newKeeperId);
@@ -891,7 +929,6 @@ function MatchScreen({ config, onEnd, onBack }) {
     if (!newField.includes(manualSwapIn)) newField.push(manualSwapIn);
     if (!newBench.includes(manualSwapOut)) newBench.push(manualSwapOut);
 
-    const fieldSpots = playersOnField - 1;
     const balanced = balanceFieldBench(newField, newBench, fieldSpots, playTimes);
     newField = balanced.field;
     newBench = balanced.bench;
@@ -902,7 +939,7 @@ function MatchScreen({ config, onEnd, onBack }) {
     setManualSwapIn(null);
 
     // Recalculate schedule
-    const outfield = players.filter((p) => p.id !== keeper);
+    const outfield = keeper ? players.filter((p) => p.id !== keeper) : [...players];
     const elapsedMin = elapsedSec / 60;
     const ptMinutes = {};
     outfield.forEach((p) => { ptMinutes[p.id] = (playTimes[p.id] || 0) / 60; });
@@ -940,7 +977,7 @@ function MatchScreen({ config, onEnd, onBack }) {
       )}
 
       {/* Keeper Swap Dialog */}
-      {showKeeperSwap && (
+      {hasKeeper && showKeeperSwap && (
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <Card style={{ maxWidth: 380, padding: 28 }}>
             <h3 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, color: COLORS.blue, marginBottom: 6, letterSpacing: 1, textAlign: "center" }}>
@@ -1043,12 +1080,14 @@ function MatchScreen({ config, onEnd, onBack }) {
               </p>
               <p style={{ marginBottom: 14 }}>
                 <strong style={{ color: COLORS.orangeBright }}>Manuelt:</strong>{" "}
-                Trykk på en utespiller på banen, deretter en spiller på benken, og bekreft med «Utfør bytte».
+                Trykk på en {keeper ? "utespiller" : "spiller"} på banen, deretter en spiller på benken, og bekreft med «Utfør bytte».
               </p>
-              <p style={{ marginBottom: 14 }}>
-                <strong style={{ color: COLORS.blue }}>Keeper:</strong>{" "}
-                Trykk på keeperen (🧤) for å bytte keeperrolle med en annen spiller.
-              </p>
+              {keeper && (
+                <p style={{ marginBottom: 14 }}>
+                  <strong style={{ color: COLORS.blue }}>Keeper:</strong>{" "}
+                  Trykk på keeperen (🧤) for å bytte keeperrolle med en annen spiller.
+                </p>
+              )}
               <p style={{ color: COLORS.textDim, fontSize: 13 }}>
                 Bytteplanen oppdateres automatisk etter hvert bytte for å sikre lik spilletid.
               </p>
@@ -1069,7 +1108,7 @@ function MatchScreen({ config, onEnd, onBack }) {
       <Card style={{ marginBottom: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <h3 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, color: COLORS.greenBright, margin: 0, letterSpacing: 1 }}>
-            PÅ BANEN ({onField.length + 1})
+            PÅ BANEN ({onField.length + (keeper ? 1 : 0)})
           </h3>
           {manualSwapOut && (
             <button onClick={cancelManualSwap} style={{
@@ -1081,7 +1120,9 @@ function MatchScreen({ config, onEnd, onBack }) {
           )}
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          <PlayerChip name={getPlayerName(keeper)} variant="keeper" onClick={!matchEnded ? () => setShowKeeperSwap(true) : undefined} />
+          {keeper && (
+            <PlayerChip name={getPlayerName(keeper)} variant="keeper" onClick={!matchEnded ? () => setShowKeeperSwap(true) : undefined} />
+          )}
           {onField.map((id) => (
             <PlayerChip
               key={id}
@@ -1095,7 +1136,9 @@ function MatchScreen({ config, onEnd, onBack }) {
         </div>
         {!matchEnded && !manualSwapOut && (
           <p style={{ color: COLORS.textDim, fontSize: 11, marginTop: 8, fontFamily: "'DM Sans', sans-serif" }}>
-            {onBench.length > 0 ? "Trykk på en utespiller for manuelt bytte · Trykk 🧤 for keeperbytte" : "Trykk på keeperen for å bytte keeperrolle"}
+            {onBench.length > 0
+              ? keeper ? "Trykk på en utespiller for manuelt bytte · Trykk 🧤 for keeperbytte" : "Trykk på en spiller for manuelt bytte"
+              : keeper ? "Trykk på keeperen for å bytte keeperrolle" : ""}
           </p>
         )}
         {manualSwapOut && !manualSwapIn && (
@@ -1177,23 +1220,25 @@ function MatchScreen({ config, onEnd, onBack }) {
           SPILLETID
         </h3>
         {(() => {
-          const outfieldIds = players.filter((p) => p.id !== keeper).map((p) => p.id);
+          const outfieldIds = keeper ? players.filter((p) => p.id !== keeper).map((p) => p.id) : players.map((p) => p.id);
           const times = outfieldIds.map((id) => ({ id, time: playTimes[id] || 0 }));
           const maxTime = Math.max(...times.map((t) => t.time), 1);
           times.sort((a, b) => b.time - a.time);
           return (
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                <div style={{ minWidth: 90, fontSize: 13, fontWeight: 600, color: COLORS.blue, fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", gap: 4 }}>
-                  🧤 {getPlayerName(keeper)}
+              {keeper && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                  <div style={{ minWidth: 90, fontSize: 13, fontWeight: 600, color: COLORS.blue, fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", gap: 4 }}>
+                    🧤 {getPlayerName(keeper)}
+                  </div>
+                  <div style={{ flex: 1, height: 20, background: COLORS.bg, borderRadius: 10, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${((playTimes[keeper] || 0) / Math.max(maxTime, elapsedSec || 1)) * 100}%`, background: `linear-gradient(90deg, ${COLORS.blue}60, ${COLORS.blue}30)`, borderRadius: 10, transition: "width 1s" }} />
+                  </div>
+                  <div style={{ minWidth: 44, fontSize: 12, color: COLORS.textMuted, textAlign: "right", fontFamily: "'DM Sans', sans-serif" }}>
+                    {formatTime(playTimes[keeper] || 0)}
+                  </div>
                 </div>
-                <div style={{ flex: 1, height: 20, background: COLORS.bg, borderRadius: 10, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${((playTimes[keeper] || 0) / Math.max(maxTime, elapsedSec || 1)) * 100}%`, background: `linear-gradient(90deg, ${COLORS.blue}60, ${COLORS.blue}30)`, borderRadius: 10, transition: "width 1s" }} />
-                </div>
-                <div style={{ minWidth: 44, fontSize: 12, color: COLORS.textMuted, textAlign: "right", fontFamily: "'DM Sans', sans-serif" }}>
-                  {formatTime(playTimes[keeper] || 0)}
-                </div>
-              </div>
+              )}
               {times.map(({ id, time }) => {
                 const isOnField = onField.includes(id);
                 return (
